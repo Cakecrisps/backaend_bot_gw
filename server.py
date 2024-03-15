@@ -84,6 +84,7 @@ async def getuserinfo():
         return jsonify({"info": info}),201  # Возвращаем корректный ответ
 
     return jsonify({"error": next_step}), 498  # Возвращаем сообщение об ошибке, если токен не прошел проверку
+
 @app.route('/createroomsps', methods=['POST'])
 async def createroomsps():
     next_step = await token_auth_and_execute(request)
@@ -94,6 +95,7 @@ async def createroomsps():
         return jsonify(inf),200
 
     return jsonify({"error": next_step}), 498
+
 @app.route('/addplayersps', methods=['PUT'])
 async def addplayersps():
     next_step = await token_auth_and_execute(request)
@@ -102,7 +104,9 @@ async def addplayersps():
         player_id = int(request.args.get('player_id'))
         inf = await add_player(room_id,player_id)
         return jsonify(inf),200
+
     return jsonify({"error": next_step}), 498
+
 @app.route('/kickplayersps', methods=['PUT'])
 async def kickplayersps():
     next_step = await token_auth_and_execute(request)
@@ -111,7 +115,9 @@ async def kickplayersps():
         player_id = int(request.args.get('player_id'))
         inf = await kick_player(room_id,player_id)
         return jsonify(inf),200
+
     return jsonify({"error": next_step}), 498
+
 @app.route('/setchoisesps', methods=['PUT'])
 async def setchoisesps():
     next_step = await token_auth_and_execute(request)
@@ -121,7 +127,9 @@ async def setchoisesps():
         choise = request.args.get('choise')
         inf = await set_choise(room_id,player_id,choise)
         return jsonify(inf),200
+
     return jsonify({"error": next_step}), 498
+
 @app.route('/whoiswinsps', methods=['GET'])
 async def whoiswinsps():
     next_step = await token_auth_and_execute(request)
@@ -135,7 +143,9 @@ async def whoiswinsps():
             await new_coins(winner,round(r[-1]*komis + c['coins'],1))
             await edit_money_in_room(room_id,winner,round(r[-1]*komis + c['coins'],1))
         return jsonify(inf),200
+
     return jsonify({"error": next_step}), 498
+
 # @app.route('/setcoinsnewvalue', methods=['GET'])
 # async def setcoinsnewvalue():
 #     user_id = int(request.args.get('user_id'))
