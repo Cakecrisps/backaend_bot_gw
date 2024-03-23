@@ -70,9 +70,9 @@ async def setcoinsnewvalue():
         user_id = int(request.args.get('user_id'))
         newcoins = float(request.args.get('newcoins'))
         coins = await new_coins(user_id, newcoins)
-        return jsonify({"message":"Ok"}),201 # Возвращаем корректный ответ
+        return json.dumps({"message":"Ok"}),201 # Возвращаем корректный ответ
 
-    return jsonify({"message":"TokenIsNotValid"}),498  # Возвращаем сообщение об ошибке, если токен не прошел проверку
+    return json.dumps({"message":"TokenIsNotValid"}),498  # Возвращаем сообщение об ошибке, если токен не прошел проверку
 
 # Маршрут для обработки /setcoinsnewvalue
 @app.route('/getuserinfo', methods=['GET'])
@@ -81,44 +81,50 @@ async def getuserinfo():
     if next_step == "next":
         user_id = int(request.args.get('user_id'))
         info = await load_user_data(user_id, 1)
-        return jsonify({"info": info}),201  # Возвращаем корректный ответ
+        return json.dumps({"info": info}),201  # Возвращаем корректный ответ
 
-    return jsonify({"error": next_step}), 498  # Возвращаем сообщение об ошибке, если токен не прошел проверку
+    return json.dumps({"error": next_step}), 498  # Возвращаем сообщение об ошибке, если токен не прошел проверку
 
-@app.route('/createroomsps', methods=['POST'])
+
+@app.route('/createroom', methods=['POST'])
 async def createroomsps():
     next_step = await token_auth_and_execute(request)
     if next_step == "next":
         creator_id = int(request.args.get('creator_id'))
         bet = int(request.args.get('bet'))
-        inf = await create_room(creator_id,bet)
-        return jsonify(inf),200
+        bet_type = int(request.args.get('bet_type'))
+        room_type = int(request.args.get('room_type'))
+        inf = await create_room(creator_id,bet,room_type,bet_type)
+        return json.dumps(inf),200
 
-    return jsonify({"error": next_step}), 498
+    return json.dumps({"error": next_step}), 498
 
-@app.route('/addplayersps', methods=['PUT'])
+
+@app.route('/addplayer', methods=['PUT'])
 async def addplayersps():
     next_step = await token_auth_and_execute(request)
     if next_step == "next":
         room_id = int(request.args.get('room_id'))
         player_id = int(request.args.get('player_id'))
         inf = await add_player(room_id,player_id)
-        return jsonify(inf),200
+        return json.dumps(inf),200
 
-    return jsonify({"error": next_step}), 498
+    return json.dumps({"error": next_step}), 498
 
-@app.route('/kickplayersps', methods=['PUT'])
+
+@app.route('/kickplayer', methods=['PUT'])
 async def kickplayersps():
     next_step = await token_auth_and_execute(request)
     if next_step == "next":
         room_id = int(request.args.get('room_id'))
         player_id = int(request.args.get('player_id'))
         inf = await kick_player(room_id,player_id)
-        return jsonify(inf),200
+        return json.dumps(inf),200
 
-    return jsonify({"error": next_step}), 498
+    return json.dumps({"error": next_step}), 498
 
-@app.route('/setchoisesps', methods=['PUT'])
+
+@app.route('/setchoise', methods=['PUT'])
 async def setchoisesps():
     next_step = await token_auth_and_execute(request)
     if next_step == "next":
@@ -126,26 +132,57 @@ async def setchoisesps():
         player_id = int(request.args.get('player_id'))
         choise = request.args.get('choise')
         inf = await set_choise(room_id,player_id,choise)
-        return jsonify(inf),200
+        return json.dumps(inf),200
 
-    return jsonify({"error": next_step}), 498
+    return json.dumps({"error": next_step}), 498
 
-@app.route('/whoiswinsps', methods=['GET'])
-async def whoiswinsps():
+
+@app.route('/whoiswin', methods=['GET'])
+async def whoiswin():
     next_step = await token_auth_and_execute(request)
     if next_step == "next":
         room_id = int(request.args.get('room_id'))
-        inf = await who_is_win(room_id)
-        if inf['winner'] != 'draw':
-            winner = inf['winner']['userid']
-            r = await get_room(room_id)
-            c = await load_user_data(winner,1)
-            await new_coins(winner,round(r[-1]*komis + c['coins'],1))
-            await edit_money_in_room(room_id,winner,round(r[-1]*komis + c['coins'],1))
-        return jsonify(inf),200
+        r = await get_room(room_id)
+        if r[4] == 1:
+            inf = await who_is_win_sps(room_id)
+            print(inf)
+            if inf['winner'] != 'draw':
+                winner_id = inf['winner']['userid']
+                loser_id = inf['loser']['userid']
+                winner = await load_user_data(winner_id,1)
+                loser =  await load_user_data(loser_id,1)
+                if r[6] == 1:
+                    await new_coins(winner_id,round(r[2]*komis + winner['coins'],1))
+                    await edit_money_in_room(room_id,winner_id,round(r[2]*komis + winner['coins'],1))
+                    await edit_money_in_room(room_id,loser_id,loser['coins'] - r[2])
+                    await new_coins(loser_id,loser['coins'] - r[2])
+                elif r[6] == 2:
+                    await new_tickets(winner_id,round(r[2]*komis + winner['tickets'],1))
+                    await edit_money_in_room(room_id,winner_id,round(r[2]*komis + winner['tickets'],1))
+                    await edit_money_in_room(room_id,loser_id,loser['tickets'] - r[2])
+                    await new_tickets(loser_id,loser['tickets'] - r[2])
+                elif r[6] == 3:
+                    await new_tokens(winner_id,round(r[2]*komis + winner['tokens'],1))
+                    await edit_money_in_room(room_id,winner_id,round(r[2]*komis + winner['tokens'],1))
+                    await edit_money_in_room(room_id,loser_id,loser['tokens'] - r[2])
+                    await new_tokens(loser_id,loser['tokens'] - r[2])
+        return json.dumps(inf),200
 
-    return jsonify({"error": next_step}), 498
+    return json.dumps({"error": next_step}), 498
 
+
+@app.route('/getrooms', methods=['GET'])
+async def getroomssps():
+    next_step = await token_auth_and_execute(request)
+    if next_step == "next":
+        min_bet = float(request.args.get('min_bet'))
+        max_bet = float(request.args.get('max_bet'))
+        game_types = list(map(int,str(request.args.get('game_types')).split(',')))
+        bet_type = int(request.args.get('bet_type'))
+        inf = await get_rooms(min_bet,max_bet,game_types,bet_type)
+        return json.dumps(inf),200
+
+    return json.dumps({"error": next_step}), 498
 # @app.route('/setcoinsnewvalue', methods=['GET'])
 # async def setcoinsnewvalue():
 #     user_id = int(request.args.get('user_id'))
