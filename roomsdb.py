@@ -1,3 +1,4 @@
+import random
 import sqlite3
 import json
 from bd import load_user_data
@@ -20,10 +21,12 @@ async def create_room(creatorid,bet,room_type,bet_type):
 
         if room_type == 1:
             free_places = 1
+            value = '-'
         else:
             free_places = 7
+            value = f"{random.randint(1,100)}"
 
-        curs.execute(f"INSERT INTO rooms_sps VALUES (?,?,?,?,?,?,?,?)",(creatorid,json.dumps({"players":[{"userid":creatorid,"choise":None,"money":money,"tickets":tickets,"tokens":tokens},]}),float(bet),1,room_type,free_places,bet_type,r_c + 1))
+        curs.execute(f"INSERT INTO rooms_sps VALUES (?,?,?,?,?,?,?,?,?)",(creatorid,json.dumps({"players":[{"userid":creatorid,"choise":None,"money":money,"tickets":tickets,"tokens":tokens},]}),float(bet),1,room_type,free_places,bet_type,value,r_c + 1))
         db.commit()
         return {"message":"success","creator":creatorid,"room_id":r_c+1}
     else:
@@ -183,3 +186,53 @@ async def get_rooms(min_bet,max_bet,game_types,bet_type):
             print(i)
             rooms.append({"room_id":i[-1],"bet":i[2],"free_places":i[5],"players":i[1],"players_count":i[3]})
     return {"min_bet":min_bet,"max_bet":max_bet,"game_types":game_types,"bet_type":bet_type,'rooms':rooms}
+
+async def edit_misc_value(room_id,value):
+    curs.execute("UPDATE rooms_sps SET misc_value = (?) WHERE room_id = (?)",(f"{value}",room_id))
+    db.commit()
+    return 'Ok'
+async def get_misc_value(room_id):
+    r = curs.execute('SELECT misc_value FROM rooms_sps WHERE room_id = (?)',(room_id,)).fetchone()
+    return r[0]
+async def who_is_win_mel(room_id):
+    curs.execute('SELECT * FROM rooms_sps WHERE room_id = (?)',(room_id,))
+    r = curs.fetchone()
+    bet_type = r[6]
+    bet = r[2]
+    value = await get_misc_value(room_id)
+    if r == None:
+        return {"message":"no_room","room_id":room_id}
+    players = json.loads(r[1])
+    players = players['players']
+    players.sort(key = lambda x:abs(int(x['choise']) - int(value)))
+    bet = bet*(len(players) - 3)
+    for k,v in enumerate(players):
+        if k == 0:
+            if bet_type == 1:
+                await edit_money_in_room(room_id,v['userid'],v['money'] + bet*0.5*0.975)
+            elif bet_type == 2:
+                await edit_money_in_room(room_id,v['userid'],v['tickets'] + bet*0.5*0.975)
+            elif bet_type == 3:
+                await edit_money_in_room(room_id,v['userid'],v['tokens'] + bet*0.5*0.975)
+        elif k == 1:
+            if bet_type == 1:
+                await edit_money_in_room(room_id,v['userid'],v['money'] + bet*0.4*0.975)
+            elif bet_type == 2:
+                await edit_money_in_room(room_id,v['userid'],v['tickets'] + bet*0.4*0.975)
+            elif bet_type == 3:
+                await edit_money_in_room(room_id,v['userid'],v['tokens'] + bet*0.4*0.975)
+        elif k == 2:
+            if bet_type == 1:
+                await edit_money_in_room(room_id,v['userid'],v['money'] + bet*0.1*0.975)
+            elif bet_type == 2:
+                await edit_money_in_room(room_id,v['userid'],v['tickets'] + bet*0.1*0.975)
+            elif bet_type == 3:
+                await edit_money_in_room(room_id,v['userid'],v['tokens'] + bet*0.1*0.975)
+        else:
+            if bet_type == 1:
+                await edit_money_in_room(room_id,v['userid'],v['money'] - bet)
+            elif bet_type == 2:
+                await edit_money_in_room(room_id,v['userid'],v['tickets'] - bet)
+            elif bet_type == 3:
+                await edit_money_in_room(room_id,v['userid'],v['tokens'] - bet)
+    return {"message":"success","players":players,"room_id":room_id}
