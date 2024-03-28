@@ -1,3 +1,5 @@
+import json
+
 import jwt
 from quart import Quart, request, render_template, jsonify
 import asyncio
@@ -166,6 +168,9 @@ async def whoiswin():
                     await edit_money_in_room(room_id,winner_id,round(r[2]*komis + winner['tokens'],1))
                     await edit_money_in_room(room_id,loser_id,loser['tokens'] - r[2])
                     await new_tokens(loser_id,loser['tokens'] - r[2])
+        elif r[4] == 2:
+            inf = await who_is_win_mel(room_id)
+            return json.dumps(inf)
         return json.dumps(inf),200
 
     return json.dumps({"error": next_step}), 498
@@ -183,6 +188,8 @@ async def getroomssps():
         return json.dumps(inf),200
 
     return json.dumps({"error": next_step}), 498
+
+
 # @app.route('/setcoinsnewvalue', methods=['GET'])
 # async def setcoinsnewvalue():
 #     user_id = int(request.args.get('user_id'))
